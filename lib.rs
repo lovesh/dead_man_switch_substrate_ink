@@ -3,10 +3,11 @@
 
 use ink_core::storage;
 use ink_lang2 as ink;
+use ink_types_node_runtime::{calls, AccountIndex, NodeRuntimeTypes, AccountId as AccountIdExt};
+use scale::KeyedVec as _;
 
 #[ink::contract(version = "0.1.0")]
 mod dead_man_switch {
-
     /// Defines the storage of the contract.
     #[ink(storage)]
     struct DeadManSwitch {
@@ -100,18 +101,10 @@ mod dead_man_switch {
             }
         }
 
-        /// Checks if the benefactor is alive by comparing its last send heartbeat't block time to
-        /// current block time and comparing against `self.heartbeat_frequency`. Returns false if
-        /// the benefactor is not registered.
+        /// Check if benefactor is alive. Proxies to `_is_alive`
         #[ink(message)]
         fn is_alive(&self, benefactor_id: storage::Value<AccountId>) -> bool {
-            match self.benefactor_heartbeats.get(&benefactor_id) {
-                Some(last_heartbeat) => {
-                    let current_block_time = self.env().now_in_ms();
-                    (current_block_time - last_heartbeat) <= *self.heartbeat_frequency
-                }
-                None => false
-            }
+            self._is_alive(&benefactor_id)
         }
 
         /// Call to claim inheritance of the benefactor. If the benefactor is dead, the inheritance
@@ -119,10 +112,38 @@ mod dead_man_switch {
         /// is alive or non-existant, false is returned.
         #[ink(message)]
         fn claim_inheritance(&mut self, benefactor_id: storage::Value<AccountId>) -> bool {
-            if self.is_alive(benefactor_id) {
+            if self._is_alive(&benefactor_id) {
                 false
             } else {
-                unimplemented!()
+                // Cloning since need to pass them to even
+                let heir_id = self.benefactor_heirs.get(&benefactor_id).unwrap().clone();
+                let inheritance = self.benefactor_balances.get(&benefactor_id).unwrap().clone();
+
+                // XXX: Following fails to compile with error "error: cannot find macro `vec` in this scope", probably an Ink! issue
+                // let heir_bytes = heir_id.to_keyed_vec(&vec![]);
+                // Convert an AccountId to AccountIdExt
+                const EMPTY_PREFIX: &[u8] = b"";
+                let heir_bytes = heir_id.to_keyed_vec(EMPTY_PREFIX);
+                let mut heir_byte_array: [u8; 32] = [0u8; 32];
+                heir_byte_array.clone_from_slice(&heir_bytes);
+                let heir_addr = calls::Address::Id(AccountIdExt::from(heir_byte_array));
+
+                // Prepare the transfer call.
+                let transfer_call = calls::Balances::<NodeRuntimeTypes, AccountIndex>::transfer(heir_addr, inheritance);
+                // TODO: Find a way to transfer balance, the following do not work
+                // self.env().dispatch_call(&ransfer_call);
+                // self.env().ext_dispatch_call(transfer_call);
+                // self.ext_dispatch_call(transfer_call);
+                // self.env().invoke_runtime(&transfer_call);
+
+                self.env()
+                    .emit_event(
+                        InheritanceClaimed {
+                            benefactor: *benefactor_id,
+                            heir: heir_id,
+                            inheritance,
+                        });
+                true
             }
         }
 
@@ -130,6 +151,20 @@ mod dead_man_switch {
         fn update_heartbeat(&mut self, caller: AccountId) {
             let current_block_time = self.env().now_in_ms();
             self.benefactor_heartbeats.insert(caller, current_block_time);
+        }
+
+        /// A private helper.
+        /// Checks if the benefactor is alive by comparing its last send heartbeat't block time to
+        /// current block time and comparing against `self.heartbeat_frequency`. Returns false if
+        /// the benefactor is not registered.
+        fn _is_alive(&self, benefactor_id: &storage::Value<AccountId>) -> bool {
+            match self.benefactor_heartbeats.get(benefactor_id) {
+                Some(last_heartbeat) => {
+                    let current_block_time = self.env().now_in_ms();
+                    (current_block_time - last_heartbeat) <= *self.heartbeat_frequency
+                }
+                None => false
+            }
         }
     }
 
