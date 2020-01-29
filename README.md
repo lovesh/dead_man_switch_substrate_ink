@@ -44,7 +44,7 @@ validator set has to be dealt with. eg. workflow
     1. In case the "man" wants to change his heir, he should generate new Y using his new heir's public key and register it as step 3.   
 This solution is not limited to getting cryptocurrency funds. The secret key for Y could be anything, like an input to a KDF or password generator.  
 When the validator set changes such that the threshold public key X has to be changed, all active R will change causing all corresponding Y to change.
-I have intentionally ommitted the cryptographic details for brevity, please refer the blog post above.
+I have intentionally omitted the cryptographic details for brevity, please refer the blog post above.
 
 1. Ink smart contract on Substrate
     1. Here the "man" registers a heir in a smart contract and locks up the funds he need his heir to have. 
