@@ -48,8 +48,10 @@ I have intentionally omitted the cryptographic details for brevity, please refer
 
 1. Ink smart contract on Substrate
     1. Here the "man" registers a heir in a smart contract and locks up the funds he need his heir to have. 
-    1. To signal the smart contract that he is alive, he periodically sends a heartbeat to it. The heir can anytime try to withdraw the funds. 
-    1. The contract will check whether the man has died by checking for a recent hearbeat and if he's dead, the funds are transferred to the heir's address.
+    1. To signal the smart contract that he is alive, he periodically sends a heartbeat to it which the contract stores 
+    and forgets the previously stored heartbeat time.
+    1. The heir can anytime try to withdraw the funds. The contract will check whether the man has died by checking for 
+    a recent heartbeat and if he's dead, the funds are transferred to the heir's address.
      
     Some improvements that should be made before going to production:
     1. The "man" should be able to update (decrease or increase) the funds (allotted to the heir) any time.

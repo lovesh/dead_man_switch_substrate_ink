@@ -99,6 +99,29 @@ mod dead_man_switch {
             }
         }
 
+        /// Checks if the benefactor is alive by comparing its last send heartbeat't block number to
+        /// current block number and comparing against `self.heartbeat_frequency`. Returns false if
+        /// the benefactor is not registered.
+        #[ink(message)]
+        fn is_alive(&self, benefactor_id: storage::Value<AccountId>) -> bool {
+            match self.benefactor_heartbeats.get(&benefactor_id) {
+                Some(last_heartbeat) => {
+                    let current_block_number = self.env().block_number();
+                    (current_block_number - last_heartbeat) <= *self.heartbeat_frequency
+                }
+                None => false
+            }
+        }
+
+        #[ink(message)]
+        fn claim_inheritance(&mut self, benefactor_id: storage::Value<AccountId>) -> bool {
+            if self.is_alive(benefactor_id) {
+                false
+            } else {
+                unimplemented!()
+            }
+        }
+
         /// Update last received heartbeat of the caller to the current block number
         /// Fixme: Update the last heartbeat to current time. Not logging an event to avoid storage cost.
         fn update_heartbeat(&mut self, caller: AccountId) {
@@ -121,6 +144,16 @@ mod dead_man_switch {
         #[ink(topic)]
         benefactor: AccountId,
     }
+
+    #[ink(event)]
+    struct InheritanceClaimed {
+        #[ink(topic)]
+        benefactor: AccountId,
+        #[ink(topic)]
+        heir: AccountId,
+        inheritance: Balance,
+    }
+
     /// Unit tests in Rust are normally defined within such a `#[cfg(test)]`
     /// module and test functions are marked with a `#[test]` attribute.
     /// The below code is technically just normal Rust code.
@@ -131,7 +164,8 @@ mod dead_man_switch {
 
         #[test]
         fn check_heartbeat_frequency_after_init() {
-            // TODO: Check if the heartbeat frequency is set correctly
+            let mut dead_man_switch = DeadManSwitch::new(10u64);
+            assert_eq!(dead_man_switch.get_heartbeat_frequency(), 10);
         }
 
         #[test]
@@ -141,6 +175,9 @@ mod dead_man_switch {
 
         #[test]
         fn check_benefactor_registration_fails_when_insufficient_balance() {
+            let mut dead_man_switch = DeadManSwitch::new(10u64);
+            /*let heir: AccountId = [0u8; 32].into();
+            dead_man_switch.register_benefactor()*/
             // TODO: Check event as well
         }
 
