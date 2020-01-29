@@ -6,10 +6,11 @@ use ink_lang2 as ink;
 
 #[ink::contract(version = "0.1.0")]
 mod dead_man_switch {
+
     /// Defines the storage of the contract.
     #[ink(storage)]
     struct DeadManSwitch {
-        /// Every benefactor should send a heartbeat every `heartbeat_frequency` seconds.
+        /// Every benefactor should send a heartbeat every `heartbeat_frequency` milliseconds.
         heartbeat_frequency: storage::Value<u64>,
         // TODO: Can't figure out how to store struct as hashmap value. Come back to it later.
         /*/// Store a mapping from benefactors AccountId to a Benefactor
@@ -23,7 +24,7 @@ mod dead_man_switch {
         benefactor_heirs: storage::HashMap<AccountId, AccountId>,
         /// Last block number when the heartbeat was sent.
         /// XXX: Using Block number for now since can't find a way to access current time.
-        benefactor_heartbeats: storage::HashMap<AccountId, BlockNumber>
+        benefactor_heartbeats: storage::HashMap<AccountId, Moment>
     }
 
     // TODO: Can't figure out how to store struct as hashmap value. Come back to it later.
@@ -99,20 +100,23 @@ mod dead_man_switch {
             }
         }
 
-        /// Checks if the benefactor is alive by comparing its last send heartbeat't block number to
-        /// current block number and comparing against `self.heartbeat_frequency`. Returns false if
+        /// Checks if the benefactor is alive by comparing its last send heartbeat't block time to
+        /// current block time and comparing against `self.heartbeat_frequency`. Returns false if
         /// the benefactor is not registered.
         #[ink(message)]
         fn is_alive(&self, benefactor_id: storage::Value<AccountId>) -> bool {
             match self.benefactor_heartbeats.get(&benefactor_id) {
                 Some(last_heartbeat) => {
-                    let current_block_number = self.env().block_number();
-                    (current_block_number - last_heartbeat) <= *self.heartbeat_frequency
+                    let current_block_time = self.env().now_in_ms();
+                    (current_block_time - last_heartbeat) <= *self.heartbeat_frequency
                 }
                 None => false
             }
         }
 
+        /// Call to claim inheritance of the benefactor. If the benefactor is dead, the inheritance
+        /// is transferred to the heir, an event is logged and true is returned. If the benefactor
+        /// is alive or non-existant, false is returned.
         #[ink(message)]
         fn claim_inheritance(&mut self, benefactor_id: storage::Value<AccountId>) -> bool {
             if self.is_alive(benefactor_id) {
@@ -122,11 +126,10 @@ mod dead_man_switch {
             }
         }
 
-        /// Update last received heartbeat of the caller to the current block number
-        /// Fixme: Update the last heartbeat to current time. Not logging an event to avoid storage cost.
+        /// Update last received heartbeat of the caller to the current block time
         fn update_heartbeat(&mut self, caller: AccountId) {
-            let current_block_number = self.env().block_number();
-            self.benefactor_heartbeats.insert(caller, current_block_number);
+            let current_block_time = self.env().now_in_ms();
+            self.benefactor_heartbeats.insert(caller, current_block_time);
         }
     }
 
@@ -164,8 +167,8 @@ mod dead_man_switch {
 
         #[test]
         fn check_heartbeat_frequency_after_init() {
-            let mut dead_man_switch = DeadManSwitch::new(10u64);
-            assert_eq!(dead_man_switch.get_heartbeat_frequency(), 10);
+            let mut dead_man_switch = DeadManSwitch::new(100000);
+            assert_eq!(dead_man_switch.get_heartbeat_frequency(), 100000);
         }
 
         #[test]
