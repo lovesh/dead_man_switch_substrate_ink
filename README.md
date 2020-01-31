@@ -26,12 +26,12 @@ safe quorum changes, eg, if originally the validator set had size 5, the "man" w
 nodes are needed to reconstitute which is > 51% of nodes (assuming proof of work blockchain). If the 5 new nodes joined, 3 nodes only 
 constitute 30% of the network which we assume can be compromised. 
 
-1. Discreet Log Contracts
+1. Discreet Log Contracts  
 Another approach is to use idea of Discreet Log Contract which was an MIT research group's proposal. 
 [Here is my blog post](https://medium.com/coinmonks/conditional-payments-on-bitcoin-using-discreet-log-contracts-eed19e086e3) on that 
 but the idea is that a secret can be learned from a signature created by an oracle and the heir can learn the private key of a public key 
 which has the funds by using some information that only he has and the signature. The oracle's role is played by the blockchain and the 
-signature scheme used is Schonrr which can be thresholdized. Since this approach also uses a threshold cryptosystem, the isues with a dynamic 
+signature scheme used is Schonrr which can be thresholdized. Since this approach also uses a threshold cryptosystem, the issues with a dynamic 
 validator set has to be dealt with. eg. workflow 
     1. Say the blockchain has secret, public keys (x, X). x is the threshold secret key which no single entity knows and X is the threshold public 
     key which everyone knows.

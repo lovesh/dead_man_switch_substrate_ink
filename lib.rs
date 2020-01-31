@@ -59,7 +59,8 @@ mod dead_man_switch {
             let caller = self.env().caller();
             // Any of the 3 structs can be checked here
             match self.benefactor_heartbeats.get(&caller) {
-                Some(_) => {
+                None => {
+                    // Can't find heartbeat, caller not registered already, so register
                     let caller_balance = self.env().transferred_balance();
                     if caller_balance < *inheritance {
                         // Caller doesn't have enough balance as he intends to leave in inheritance
@@ -70,6 +71,7 @@ mod dead_man_switch {
                                 });
                         false
                     } else {
+                        // Caller can register now
                         self.benefactor_balances.insert(caller, *inheritance);
                         self.benefactor_heirs.insert(caller, *heir_id);
                         self.update_heartbeat(caller);
@@ -83,7 +85,7 @@ mod dead_man_switch {
                         true
                     }
                 }
-                None => false
+                Some(_) => false        // caller already registered as a benefactor
             }
         }
 
@@ -94,10 +96,11 @@ mod dead_man_switch {
             let caller = self.env().caller();
             match self.benefactor_heartbeats.get(&caller) {
                 Some(_) => {
+                    // Benefactor exists
                     self.update_heartbeat(caller);
                     true
                 }
-                None => false
+                None => false       // Benefactor does not exist
             }
         }
 
